@@ -1,10 +1,13 @@
-package com.example.gamejudgement.ai;
+package com.example.gamejudgement.ai.old;
 
 import com.almasb.fxgl.dsl.FXGL;
 import com.almasb.fxgl.entity.Entity;
-import com.example.gamejudgement.GOBangApp;
+import com.example.gamejudgement.GoBangApp;
+import com.example.gamejudgement.Player;
 import com.example.gamejudgement.TileValue;
 import com.example.gamejudgement.TileViewComponent;
+import com.example.gamejudgement.ai.GoBangAIService;
+import javafx.util.Pair;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,15 +18,15 @@ import java.util.List;
  *
  * @author Almas Baimagambetov (almaslvl@gmail.com)
  */
-public class MinimaxService extends TicTacToeAIService {
+public class MinimaxService extends GoBangAIService {
 
     private TileValue mySeed = TileValue.O;
     private TileValue oppSeed = TileValue.X;
     private TileValue[][] cells = new TileValue[3][3];
 
     @Override
-    public void makeMove() {
-        Entity[][] board = FXGL.<GOBangApp>getAppCast().getBoard();
+    public void makeMove(Player player) {
+        Entity[][] board = FXGL.<GoBangApp>getAppCast().getBoard();
 
         // the algorithm uses [row][col]
         for (int y = 0; y < 3; y++) {
@@ -36,6 +39,7 @@ public class MinimaxService extends TicTacToeAIService {
 
         board[result[2]][result[1]].getComponent(TileViewComponent.class).mark(mySeed);
     }
+
 
     /**
      * Recursive minimax at level of depth for either maximizing or minimizing player.

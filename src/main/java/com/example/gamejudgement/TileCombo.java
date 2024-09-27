@@ -27,10 +27,10 @@ public class TileCombo {
     }
 
     public boolean isComplete() {
-        List<TileValue> distinctTiles = tiles.stream().map(this::getValueOf)
+        List<Player> distinctTiles = tiles.stream().map(this::getPlayerOf)
                 .distinct()
                 .collect(Collectors.toList());
-        return distinctTiles.size() == 1 && distinctTiles.get(0) != TileValue.NONE;
+        return distinctTiles.size() == 1 && distinctTiles.get(0) != null;
     }
 
     /**
@@ -85,11 +85,15 @@ public class TileCombo {
         return tile.getComponent(TileViewComponent.class).getValue();
     }
 
+    private Player getPlayerOf(Entity tile) {
+        return tile.getComponent(TileViewComponent.class).getPlayer();
+    }
+
     private boolean isEmpty(Entity tile) {
         return tile.getComponent(TileViewComponent.class).isEmpty();
     }
 
-    public String getWinSymbol() {
-        return getValueOf(tiles.get(0)).symbol;
+    public Player getWinner() {
+        return getPlayerOf(tiles.get(0));
     }
 }

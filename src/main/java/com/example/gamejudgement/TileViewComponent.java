@@ -6,13 +6,11 @@ import javafx.animation.KeyValue;
 import javafx.animation.Timeline;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
+import javafx.scene.paint.Paint;
 import javafx.scene.shape.Arc;
 import javafx.scene.shape.Line;
 import javafx.scene.shape.Rectangle;
 import javafx.util.Duration;
-
-import static com.almasb.fxgl.dsl.FXGL.getAppHeight;
-import static com.almasb.fxgl.dsl.FXGL.getAppWidth;
 
 /**
  * @author Almas Baimagambetov (almaslvl@gmail.com)
@@ -21,14 +19,16 @@ public class TileViewComponent extends ChildViewComponent {
 
     private TileValue value = TileValue.NONE;
 
+    private Player player = null;
+
     private Arc arc = new Arc(34, 37, 34, 37, 0, 0);
     private Line line1 = new Line(0, 0, 0, 0);
     private Line line2 = new Line(75, 0, 75, 0);
 
     public TileViewComponent() {
-        Rectangle bg = new Rectangle(GOBangApp.CELL_SIZE, GOBangApp.CELL_SIZE, Color.rgb(13, 222, 236));
+        Rectangle bg = new Rectangle(GoBangApp.CELL_SIZE, GoBangApp.CELL_SIZE, Color.rgb(13, 222, 236));
 
-        Rectangle bg2 = new Rectangle(GOBangApp.CELL_SIZE/3*2, GOBangApp.CELL_SIZE/3*2, Color.rgb(250, 250, 250, 0.25));
+        Rectangle bg2 = new Rectangle(GoBangApp.CELL_SIZE/3*2, GoBangApp.CELL_SIZE/3*2, Color.rgb(250, 250, 250, 0.25));
         bg2.setArcWidth(25);
         bg2.setArcHeight(25);
 
@@ -46,12 +46,19 @@ public class TileViewComponent extends ChildViewComponent {
     }
 
     public boolean isEmpty() {
-        return getValue() == TileValue.NONE;
+        return player == null;
     }
+
 
     public TileValue getValue() {
         return value;
     }
+
+    public Player getPlayer(){
+        return player;
+    }
+
+
 
     /**
      * @param value tile value
@@ -66,6 +73,25 @@ public class TileViewComponent extends ChildViewComponent {
         animate(value);
 
         return true;
+    }
+
+    public boolean mark(Player player) {
+        if (this.player != null)
+            return false;
+
+        this.player = player;
+
+        animate(player.color);
+
+        return true;
+    }
+
+    private void animate(Color color) {
+        KeyFrame frame = new KeyFrame(Duration.seconds(0.5),
+                new KeyValue(arc.lengthProperty(), 360));
+        arc.setFill(Paint.valueOf(color.toString()));
+        Timeline timeline = new Timeline(frame);
+        timeline.play();
     }
 
     public void animate(TileValue value) {

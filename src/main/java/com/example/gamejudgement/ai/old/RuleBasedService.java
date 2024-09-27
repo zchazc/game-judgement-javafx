@@ -1,11 +1,9 @@
-package com.example.gamejudgement.ai;
+package com.example.gamejudgement.ai.old;
 
 import com.almasb.fxgl.dsl.FXGL;
 import com.almasb.fxgl.entity.Entity;
-import com.example.gamejudgement.GOBangApp;
-import com.example.gamejudgement.TileCombo;
-import com.example.gamejudgement.TileValue;
-import com.example.gamejudgement.TileViewComponent;
+import com.example.gamejudgement.*;
+import com.example.gamejudgement.ai.GoBangAIService;
 
 import java.util.Arrays;
 import java.util.List;
@@ -16,7 +14,7 @@ import java.util.function.Predicate;
  *
  * @author Almas Baimagambetov (almaslvl@gmail.com)
  */
-public class RuleBasedService extends TicTacToeAIService {
+public class RuleBasedService extends GoBangAIService {
 
     private List<Predicate<TileCombo> > aiPredicates = Arrays.asList(
             c -> c.isTwoThirds(TileValue.O),
@@ -27,8 +25,8 @@ public class RuleBasedService extends TicTacToeAIService {
     );
 
     @Override
-    public void makeMove() {
-        List<TileCombo> combos = FXGL.<GOBangApp>getAppCast().getCombos();
+    public void makeMove(Player player) {
+        List<TileCombo> combos = FXGL.<GoBangApp>getAppCast().getCombos();
 
         Entity tile = aiPredicates.stream()
                 .map(predicate -> {

@@ -3,11 +3,12 @@ package com.example.gamejudgement;
 import com.almasb.fxgl.app.GameApplication;
 import com.almasb.fxgl.app.GameSettings;
 import com.almasb.fxgl.entity.Entity;
-import com.example.gamejudgement.ai.RandomService;
-import com.example.gamejudgement.event.AIEvent;
+import com.example.gamejudgement.ai.old.DefaultService;
+import com.example.gamejudgement.event.PlayerEvent;
 import javafx.animation.KeyFrame;
 import javafx.animation.KeyValue;
 import javafx.animation.Timeline;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Line;
 import javafx.util.Duration;
@@ -17,11 +18,12 @@ import java.util.List;
 import java.util.stream.IntStream;
 
 import static com.almasb.fxgl.dsl.FXGL.*;
-import static com.almasb.fxgl.dsl.FXGL.getDialogService;
 
-public class GOBangApp extends GameApplication {
+public class GoBangApp extends GameApplication {
 
+    //设置行
     public static final int ROW_SIZE = 9;
+    //设置列
     public static final int COL_SIZE = 9;
     public static final int APP_WIDTH = 800;
     public static final int APP_HEIGHT = 600;
@@ -29,7 +31,17 @@ public class GOBangApp extends GameApplication {
     public static final double CELL_SIZE = ((double) EDGE_SIZE )/Math.max(ROW_SIZE,COL_SIZE);
     public static final double BOARD_WIDTH = CELL_SIZE*COL_SIZE;
     public static final double BOARD_HEIGHT = CELL_SIZE*ROW_SIZE;
+    //设置多少连子算获胜
     public static final int WIN_COMBOS_SIZE = 4;
+
+    //设置玩家数
+    public static final int PLAYER_NUM = 2;
+
+    private int currentPlayer;
+
+    private int startPlayer = 0;
+    private Player[] players = new Player[PLAYER_NUM];
+
 
     @Override
     protected void initSettings(GameSettings settings) {
@@ -37,13 +49,15 @@ public class GOBangApp extends GameApplication {
         settings.setVersion("1.0");
         settings.setWidth(APP_WIDTH);
         settings.setHeight(APP_HEIGHT);
-        settings.addEngineService(RandomService.class);
+        settings.addEngineService(DefaultService.class);
     }
 
     private Entity[][] board = new Entity[ROW_SIZE][COL_SIZE];
     private List<TileCombo> combos = new ArrayList<>();
 
-    private boolean playerStarts = true;
+    private boolean isStart = false;
+
+    private boolean canMove = true;
 
     public Entity[][] getBoard() {
         return board;
@@ -55,18 +69,29 @@ public class GOBangApp extends GameApplication {
 
     @Override
     protected void onPreInit() {
-        getEventBus().addEventHandler(AIEvent.MOVED, event -> checkGameFinished());
+        getEventBus().addEventHandler(PlayerEvent.PLAYER_MOVED, event -> {
+            boolean over = checkGameFinished();
+            if(!over){
+                canMove = true;
+            }
+        });
     }
 
     @Override
     protected void initGame() {
         getGameWorld().addEntityFactory(new GoBangFactory());
+        Player.resetSeq();
         for (int y = 0; y < ROW_SIZE; y++) {
             for (int x = 0; x < COL_SIZE; x++) {
                 board[x][y] = spawn("tile", x * CELL_SIZE, y * CELL_SIZE);
             }
         }
 
+        for (int i = 0; i < PLAYER_NUM; i++) {
+            //可以单独设置AI
+            players[i] = new Player();
+        }
+        isStart = false;
         combos.clear();
 
         // horizontal
@@ -113,12 +138,27 @@ public class GOBangApp extends GameApplication {
             }
         }
 
-        if (playerStarts) {
-            playerStarts = false;
-        } else {
-            aiMove();
-            playerStarts = true;
-        }
+        getInput().addEventHandler(MouseEvent.MOUSE_CLICKED,event -> {
+            if(!isStart){
+                canMove = true;
+                currentPlayer = startPlayer++ - 1;
+                isStart = true;
+            }
+            if(canMove){
+                nextPlayerMove();
+            }
+        });
+
+
+    }
+
+
+    public void nextPlayerMove(){
+        playerMove(players[++currentPlayer % PLAYER_NUM]);
+    }
+    public void playerMove(Player player){
+        canMove = false;
+        getEventBus().fireEvent(new PlayerEvent(PlayerEvent.PLAYER_WAITING,player));
     }
 
     @Override
@@ -134,28 +174,6 @@ public class GOBangApp extends GameApplication {
                         .mapToObj(idx->new Line(CELL_SIZE * idx, 0, CELL_SIZE * idx, BOARD_HEIGHT))
                         .toArray(Line[]::new)
         );
-//        Line line1 = new Line(getAppWidth() / 3, 0, getAppWidth() / 3, 0);
-//        Line line2 = new Line(getAppWidth() / 3 * 2, 0, getAppWidth() / 3 * 2, 0);
-//        Line line3 = new Line(0, getAppHeight() / 3, 0, getAppHeight() / 3);
-//        Line line4 = new Line(0, getAppHeight() / 3 * 2, 0, getAppHeight() / 3 * 2);
-//
-//        getGameScene().addUINodes(line1, line2, line3, line4);
-//
-//        // animation
-//        KeyFrame frame1 = new KeyFrame(Duration.seconds(0.5),
-//                new KeyValue(line1.endYProperty(), getAppHeight()));
-//
-//        KeyFrame frame2 = new KeyFrame(Duration.seconds(1),
-//                new KeyValue(line2.endYProperty(), getAppHeight()));
-//
-//        KeyFrame frame3 = new KeyFrame(Duration.seconds(0.5),
-//                new KeyValue(line3.endXProperty(), getAppWidth()));
-//
-//        KeyFrame frame4 = new KeyFrame(Duration.seconds(1),
-//                new KeyValue(line4.endXProperty(), getAppWidth()));
-//
-//        Timeline timeline = new Timeline(frame1, frame2, frame3, frame4);
-//        timeline.play();
     }
 
     private boolean checkGameFinished() {
@@ -176,8 +194,18 @@ public class GOBangApp extends GameApplication {
             }
         }
 
-        gameOver("平局");
+        draw();
         return true;
+    }
+
+    private void draw() {
+
+        getDialogService().showConfirmationBox("平局\n继续?", yes -> {
+            if (yes)
+                getGameController().startNewGame();
+            else
+                getGameController().exit();
+        });
     }
 
     private void playWinAnimation(TileCombo combo) {
@@ -189,18 +217,20 @@ public class GOBangApp extends GameApplication {
         line.setStroke(Color.YELLOW);
         line.setStrokeWidth(3);
 
+
         getGameScene().addUINode(line);
 
         Timeline timeline = new Timeline();
         timeline.getKeyFrames().add(new KeyFrame(Duration.seconds(1),
                 new KeyValue(line.endXProperty(), combo.getLastTile().getCenter().getX()),
                 new KeyValue(line.endYProperty(), combo.getLastTile().getCenter().getY())));
-        timeline.setOnFinished(e -> gameOver(combo.getWinSymbol()));
+        timeline.setOnFinished(e -> gameOver(combo.getWinner()));
         timeline.play();
     }
 
-    private void gameOver(String winner) {
-        getDialogService().showConfirmationBox("胜者: " + winner + "\n继续?", yes -> {
+    private void gameOver(Player winner) {
+
+        getDialogService().showConfirmationBox("胜者: " + winner.name + "\n继续?", yes -> {
             if (yes)
                 getGameController().startNewGame();
             else
@@ -208,22 +238,6 @@ public class GOBangApp extends GameApplication {
         });
     }
 
-    public void onUserMove(Entity tile) {
-        boolean ok = tile.getComponent(TileViewComponent.class).mark(TileValue.X);
-
-        if (ok) {
-            boolean over = checkGameFinished();
-
-            if (!over) {
-                aiMove();
-            }
-        }
-    }
-
-    private void aiMove() {
-        AIEvent aiEvent = new AIEvent(AIEvent.WAITING);
-        getEventBus().fireEvent(aiEvent);
-    }
 
     public static void main(String[] args) {
         launch(args);
